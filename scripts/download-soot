@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+project_dir=$script_dir/..
+
+cd $project_dir
+
+mkdir -p ./downloads/soot/build 2> /dev/null
+cd ./downloads/soot/build
+
+curl https://soot-build.cs.uni-paderborn.de/public/origin/master/soot/soot-master/4.1.0/build/sootclasses-trunk-jar-with-dependencies.jar \
+  -o sootclasses-trunk-jar-with-dependencies.jar
