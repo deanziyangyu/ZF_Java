@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.navids.soottutorial.BasicAPITest" tests="3" skipped="0" failures="0" errors="0" timestamp="2023-01-04T17:07:03" hostname="yipgroup-Precision-WorkStation-T7500" time="19.663">
+  <properties/>
+  <testcase name="testSetup" classname="dev.navids.soottutorial.BasicAPITest" time="19.648"/>
+  <testcase name="testClassFilesExist" classname="dev.navids.soottutorial.BasicAPITest" time="0.015"/>
+  <testcase name="testCallGraph" classname="dev.navids.soottutorial.BasicAPITest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
