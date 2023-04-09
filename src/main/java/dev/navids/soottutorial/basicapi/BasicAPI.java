@@ -16,6 +16,7 @@ import java.util.*;
 public class BasicAPI {
     public static String sourceDirectory = System.getProperty("user.dir") + File.separator + "demo" + File.separator + "BasicAPI";
     public static String circleClassName = "Circle";
+    public static String methodName = "apply_transform_1";
 
     public static void setupSoot() {
         G.reset();
@@ -39,26 +40,26 @@ public class BasicAPI {
         Local paramLocal = body.getParameterLocal(0);
     }
 
-    private static SootMethod reportSootMethodInfo(SootClass circleClass) {
+    private static SootMethod reportSootMethodInfo(SootClass target_class) {
         System.out.println("-----Method-----");
-        System.out.println(String.format("List of %s's methods:", circleClass.getName()));
-        for(SootMethod sootMethod : circleClass.getMethods())
+        System.out.println(String.format("List of %s's methods:", target_class.getName()));
+        for(SootMethod sootMethod : target_class.getMethods())
             System.out.println(String.format("- %s",sootMethod.getName()));
-        SootMethod getCircleCountMethod = circleClass.getMethod("int getCircleCount()");
-        System.out.println(String.format("Method Signature: %s", getCircleCountMethod.getSignature()));
-        System.out.println(String.format("Method Subsignature: %s", getCircleCountMethod.getSubSignature()));
-        System.out.println(String.format("Method Name: %s", getCircleCountMethod.getName()));
-        System.out.println(String.format("Declaring class: %s", getCircleCountMethod.getDeclaringClass()));
-        int methodModifers = getCircleCountMethod.getModifiers();
-        System.out.println(String.format("Method %s is public: %b, is static: %b, is final: %b", getCircleCountMethod.getName(), Modifier.isPublic(methodModifers), Modifier.isStatic(methodModifers), Modifier.isFinal(methodModifers)));
-        SootMethod constructorMethod = circleClass.getMethodByName("<init>");
-        try{
+        SootMethod getMethod = target_class.getMethodByName(methodName);
+        System.out.println(String.format("Method Signature: %s", getMethod.getSignature()));
+        System.out.println(String.format("Method Subsignature: %s", getMethod.getSubSignature()));
+        System.out.println(String.format("Method Name: %s", getMethod.getName()));
+        System.out.println(String.format("Declaring class: %s", getMethod.getDeclaringClass()));
+        int methodModifers = getMethod.getModifiers();
+        System.out.println(String.format("Method %s is public: %b, is static: %b, is final: %b", getMethod.getName(), Modifier.isPublic(methodModifers), Modifier.isStatic(methodModifers), Modifier.isFinal(methodModifers)));
+        SootMethod constructorMethod = target_class.getMethodByName("<init>");
+        /*try{
             SootMethod areaMethod = circleClass.getMethodByName("area");
         }
         catch (Exception exception){
             System.out.println("Th method 'area' is overloaded and Soot cannot retrieve it by name");
-        }
-        return circleClass.getMethod("int area(boolean)");
+        }*/
+        return target_class.getMethodByName(methodName);
     }
 
     private static SootField reportSootFieldInfo(SootClass circleClass) {
@@ -69,9 +70,9 @@ public class BasicAPI {
     }
 
     private static SootClass reportSootClassInfo() {
-        System.out.println("-----Class-----");
+        //System.out.println("-----Class-----");
         SootClass circleClass = Scene.v().getSootClass(circleClassName);
-        System.out.println(String.format("The class %s is an %s class, loaded with %d methods! ",
+        /*System.out.println(String.format("The class %s is an %s class, loaded with %d methods! ",
                 circleClass.getName(), circleClass.isApplicationClass() ? "Application" : "Library", circleClass.getMethodCount()));
         String wrongClassName = "Circrle";
         SootClass notExistedClass = Scene.v().getSootClassUnsafe(wrongClassName, false);
@@ -83,7 +84,7 @@ public class BasicAPI {
             System.out.println(String.format("getClass throws an exception for class %s.", wrongClassName));
         }
         Type circleType = circleClass.getType();
-        System.out.println(String.format("Class '%s' is same as class of type '%s': %b", circleClassName, circleType.toString(), circleClass.equals(Scene.v().getSootClass(circleType.toString()))));
+        System.out.println(String.format("Class '%s' is same as class of type '%s': %b", circleClassName, circleType.toString(), circleClass.equals(Scene.v().getSootClass(circleType.toString()))));*/
         return circleClass;
     }
 
@@ -171,7 +172,7 @@ public class BasicAPI {
         return null;
     }
 
-    public static ArrayList<Edge> least_method_calls_to_target_block(SootMethod message_generating_method, ArrayList<SootMethod> default_call_sequence){
+    public static ArrayList<SootMethod> least_method_calls_to_target_block(SootMethod message_generating_method, ArrayList<SootMethod> default_call_sequence){
         if(default_call_sequence.isEmpty()){
             return null;
         }
@@ -200,8 +201,18 @@ public class BasicAPI {
                     distances.put(caller_hashcode, dist+1);
                     out_edges.put(caller_hashcode, call_edge);
                     if(originally_called_methods.contains(caller_hashcode)){ //arrived on the original call path
-                        System.out.println("Found shortest path of length " + (dist+1));
-                        return generate_call_path(out_edges, caller_method, dist+1);
+                        System.out.println("Found shortest diverging path of length " + (dist+1) +  " to connect to the original path\n");
+                        ArrayList<SootMethod> new_path = new ArrayList<>();
+                        for(SootMethod existing_method : default_call_sequence){
+                            new_path.add(existing_method);
+                            if(existing_method.equivHashCode() == caller_hashcode)
+                                break;
+                        }
+                        ArrayList<Edge> new_edges = generate_call_path(out_edges, caller_method, dist+1);
+                        for(Edge new_edge : new_edges){
+                            new_path.add(new_edge.tgt());
+                        }
+                        return new_path;
                     }
                     frontier.add(caller_method);
                 }
@@ -236,7 +247,7 @@ public class BasicAPI {
         return null;
     }
 
-    public static ArrayList<Unit> shortest_path_to_target_block(SootMethod message_generating_method, ArrayList<SootMethod> default_call_sequence){
+    /*public static ArrayList<Unit> shortest_path_to_target_block(SootMethod message_generating_method, ArrayList<SootMethod> default_call_sequence){
         ArrayList<Edge> least_methods_path = least_method_calls_to_target_block(message_generating_method, default_call_sequence);
         if(least_methods_path == null){
             return null;
@@ -250,7 +261,7 @@ public class BasicAPI {
             shortest_path.addAll(path_inside_method);
         }
         return shortest_path;
-    }
+    }*/
 
     public static ArrayList<ArrayList<Edge>> all_paths_to_target_block_via_bfs(SootMethod message_generating_method, ArrayList<SootMethod> default_call_sequence){
         if(call_sequence.isEmpty()){
@@ -436,33 +447,35 @@ public class BasicAPI {
 
     public static void main(String[] args) {
         setupSoot();
+        
         // Access to Classes
         SootClass circleClass = reportSootClassInfo();
         // Access to Fields
-        SootField radiusField = reportSootFieldInfo(circleClass);
+        // SootField radiusField = reportSootFieldInfo(circleClass);
         // Access to Methods
-        SootMethod areaMethod = reportSootMethodInfo(circleClass);
+        SootMethod computeValueMethod = reportSootMethodInfo(circleClass);
         // Access to Body (units, locals)
         System.out.println("-----Body-----");
-        JimpleBody body = (JimpleBody) areaMethod.getActiveBody();
+        JimpleBody body = (JimpleBody) computeValueMethod.getActiveBody();
         reportLocalInfo(body);
         Stmt firstNonIdentitiyStmt = body.getFirstNonIdentityStmt();
         int c = 0;
 
         // SootMethod main_method = circleClass.getMethodByName("main");
         // SootMethod area_bool_method = circleClass.getMethod("int area(boolean)");
-        UnitGraph ug = new ClassicCompleteUnitGraph(areaMethod.getActiveBody());
+        UnitGraph ug = new ClassicCompleteUnitGraph(computeValueMethod.getActiveBody());
 
         UnitPatchingChain units_in_method = body.getUnits();
         List<UnitBox> predecessors;
         for (Unit u : units_in_method) {
             c++;
             Stmt stmt = (Stmt) u;
+            modifyBody(body, stmt);
             System.out.println(String.format("(%d): %s", c, u ));
-            if(stmt.branches())
-                System.out.println("the above statement is a branch statement");
-            if(stmt.equals(firstNonIdentitiyStmt))
-                System.out.println("    This statement is the first non-identity statement!");
+            //if(stmt.branches())
+            //    System.out.println("the above statement is a branch statement");
+            //if(stmt.equals(firstNonIdentitiyStmt))
+            //    System.out.println("    This statement is the first non-identity statement!");
             /*if(stmt.containsFieldRef()){
                 System.out.print("reporting field reference:");
                 reportFieldRefInfo(radiusField, stmt);
@@ -470,67 +483,83 @@ public class BasicAPI {
             /*if(doesInvokeMethod(stmt, "int area()", circleClassName)){
                 System.out.println("    This statement invokes 'int area()' method");
             }*/
-            //modifyBody(body, stmt);
-            predecessors = stmt.getBoxesPointingToThis();
-            System.out.println("fallthrough: " + stmt.fallsThrough() + " # preds: " + predecessors.size());
-            System.out.println(ug.getPredsOf(u));
+            //predecessors = stmt.getBoxesPointingToThis();
+            //System.out.println("fallthrough: " + stmt.fallsThrough() + " # preds: " + predecessors.size());
+            //System.out.println(ug.getPredsOf(u));
             // List<Unit> pred_Us = ug.getPredsOf(u);
 
             // for(Unit pred_U : pred_Us){
             //     // System.out.println(String.format("(%d): %s", c, pred_U ));
             // }
 
-            /*if(predecessors.size() > 0){
-                System.out.print("predecessors: ");
-                for(UnitBox pred : predecessors){
+            //if(predecessors.size() > 0){
+            //    System.out.print("predecessors: ");
+            //    for(UnitBox pred : predecessors){
                     // System.out.println(pred.getUnit() + "    " + units_in_method.getPredOf(pred.getUnit()));
-                    System.out.println(ug.getPredsOf(pred.getUnit()));
+            //        System.out.println(ug.getPredsOf(pred.getUnit()));
                     //Stmt pred_stmt = (Stmt)(pred.getUnit());
                     //System.out.println(pred_stmt);
-                }
-            }*/
-            System.out.println();
+            //    }
+            //}
+        //    System.out.println();
         }
-        for(Trap trap : body.getTraps()){
-            System.out.println(trap);
-        }
-        try {
-            body.validate();
-            System.out.println("Body is validated! No inconsistency found.");
-        }
-        catch (Exception exception){
-            System.out.println("Body is not validated!");
-        }
+        //for(Trap trap : body.getTraps()){
+        //    System.out.println(trap);
+        //}
+        //try {
+        //    body.validate();
+        //    System.out.println("Body is validated! No inconsistency found.");
+        //}
+        //catch (Exception exception){
+        //    System.out.println("Body is not validated!");
+        //}
         
         // Call graph
-        System.out.println("-----CallGraph-----");
+
         CallGraph callGraph = Scene.v().getCallGraph();
-        for(Iterator<Edge> it = callGraph.edgesOutOf(areaMethod); it.hasNext(); ){
+        //System.out.println("-----CallGraph-----");
+        /*for(Iterator<Edge> it = callGraph.edgesOutOf(areaMethod); it.hasNext(); ){
             Edge edge = it.next();
             System.out.println(String.format("Method '%s' invokes method '%s' through stmt '%s", edge.src(), edge.tgt(), edge.srcUnit()));
+        }*/
+        if(args.length >= 2 && args[1].equals("display_path")){
+            System.out.println("\n\n[ZombieJazz] display_path enabled\n");
+            SootMethod main_method = circleClass.getMethodByName("main");
+            //SootMethod area_bool_method = circleClass.getMethod("int area(boolean)");
+            ArrayList<SootMethod> default_path = new ArrayList<>();
+            default_path.add(main_method);
+            default_path.add(circleClass.getMethodByName("setup"));
+            default_path.add(circleClass.getMethodByName("compute_value"));
+            default_path.add(circleClass.getMethodByName("hash"));
+            default_path.add(circleClass.getMethodByName("send_untransformed"));
+            //default_path.add(area_bool_method);
+            SootMethod target_method = circleClass.getMethodByName("send_transform_result");
+            System.out.println();
+            ArrayList<SootMethod> shortest_path = least_method_calls_to_target_block(target_method, default_path);
+            if(shortest_path != null){
+                System.out.println("--------original path--------\n");
+                for(SootMethod method : default_path)
+                    System.out.println(method);
+                System.out.println();
+                System.out.println("--------new path--------\n");
+                for(SootMethod method : shortest_path)
+                    System.out.println(method);
+                System.out.println();
+            }
+            System.out.println();
         }
-
-        SootMethod main_method = circleClass.getMethodByName("main");
-        SootMethod area_bool_method = circleClass.getMethod("int area(boolean)");
-        ArrayList<SootMethod> default_path = new ArrayList<>();
-        default_path.add(main_method);
-        default_path.add(area_bool_method);
-        SootMethod target_method = circleClass.getMethodByName("getCircleCount");
-        System.out.println();
-        ArrayList<Edge> shortest_path = least_method_calls_to_target_block(target_method, default_path);
-        if(shortest_path != null){
-            for(Edge edge : shortest_path)
-                System.out.println(edge);
+        else{
+            System.out.println("not printing paths..\n");
         }
-        System.out.println();
-
         boolean drawGraph = false;
         if (args.length > 0 && args[0].equals("draw"))
             drawGraph = true;
         if (drawGraph){
             Visualizer.v().addCallGraph(callGraph, edge -> edge.src().getDeclaringClass().isApplicationClass(),
-                sootMethod -> new Pair<>(sootMethod.getDeclaringClass().isApplicationClass() ? "cg_node, default_color" : "cg_node, cg_lib_class"
+                sootMethod -> new Pair<>(sootMethod.getDeclaringClass().isApplicationClass() ? "cg_node, default_color" : "cg_node, default_color"
                 , sootMethod.getDeclaringClass().isApplicationClass() ? sootMethod.getSubSignature() : sootMethod.getSignature()));
+            Visualizer.v().draw();
+            Visualizer.v().addUnitGraph(ug);
             Visualizer.v().draw();
         }
     }
